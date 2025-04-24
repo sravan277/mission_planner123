@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Add background image/logo here */
+            /* background-image: url('your-background-image.jpg'); */
+            /* background-size: cover; */
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        h1, h2 {
+            color: #1a253c;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+             margin-bottom: 30px;
+        }
+
+        #telemetry {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Responsive grid */
+            gap: 15px; /* Spacing between grid items */
+            border: none; /* Remove old border */
+            padding: 0;
+        }
+
+        .telemetry-item {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between; /* Align label and value */
+            align-items: center;
+        }
+
+        .label {
+            font-weight: 600; /* Slightly bolder */
+            color: #555;
+            margin-right: 10px;
+        }
+
+        .value {
+            font-weight: 500;
+            color: #1a73e8; /* Accent color for values */
+            font-size: 1.1em;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .status-connected { background-color: #34a853; animation: pulse-green 1.5s infinite; }
+        .status-disconnected { background-color: #ea4335; }
+        .status-armed { background-color: #ea4335; animation: pulse-red 1.5s infinite; }
+        .status-disarmed { background-color: #7f8c8d; } /* Grey for disarmed */
+
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(52, 168, 83, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(52, 168, 83, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 168, 83, 0); }
+        }
+         @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(234, 67, 53, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); }
+        }
+
+
+        #controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        button {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 5px 10px;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        button:hover {
+            background-color: #125abc;
+        }
+         button:active {
+             transform: scale(0.98); /* Slight press effect */
+         }
+
+        #commandStatus {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: 500;
+            min-height: 1.2em; /* Prevent layout shift */
+        }
+        .status-success { color: #34a853; }
+        .status-error { color: #ea4335; }
+        .status-pending { color: #7f8c8d; }
+
+        .connection-status {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Drone Dashboard</h1>
+
+        <div class="connection-status">
+            Websocket Status: <span id="ws_status">Connecting...</span>
+            <span id="ws_indicator" class="status-indicator status-disconnected"></span>
+        </div>
+
+        <div id="telemetry">
+            <h2>Live Telemetry</h2>
+            </div>
+    </div>
+
+    <div class="container">
+        <h2>Commands</h2>
+        <div id="controls">
+            <button id="armButton">Arm</button>
+            <button id="missionButton">Start Mission</button>
+            <button id="rtlButton">Return to Launch</button>
+            </div>
+        <div id="commandStatus" class="status-pending">Awaiting commands...</div>
+    </div>
+
+    <script>
+        const socket = io(); // Connects to the server that served the page
+
+        const wsStatusSpan = document.getElementById('ws_status');
+        const wsIndicatorSpan = document.getElementById('ws_indicator');
+        const telemetryDiv = document.getElementById('telemetry'); // Target the grid div
+        const commandStatusDiv = document.getElementById('commandStatus');
+
+        // Store telemetry elements dynamically
+        const telemetryElements = {};
+
+        function updateTelemetryElement(key, value, unit = '') {
+            const formattedValue = (typeof value === 'number') ? value.toFixed(2) : (value || '--');
+             const displayValue = `${formattedValue}${unit}`;
+
+             if (!telemetryElements[key]) {
+                // Create element if it doesn't exist
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'telemetry-item';
+
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'label';
+                // Simple capitalization for label
+                labelSpan.textContent = key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ') + ':';
+
+                const valueSpan = document.createElement('span');
+                valueSpan.className = 'value';
+                valueSpan.id = `val-${key}`;
+                valueSpan.textContent = displayValue;
+
+                // Special handling for armed status indicator
+                if (key === 'armed') {
+                     const indicatorSpan = document.createElement('span');
+                     indicatorSpan.id = 'armed_indicator';
+                     indicatorSpan.className = 'status-indicator status-disarmed'; // Default disarmed
+                     valueSpan.appendChild(indicatorSpan); // Add indicator next to Yes/No
+                 }
+
+
+                itemDiv.appendChild(labelSpan);
+                itemDiv.appendChild(valueSpan);
+                telemetryDiv.appendChild(itemDiv);
+                telemetryElements[key] = valueSpan; // Store reference to the value span
+            } else {
+                 // Update existing element's text content
+                 // Handle armed status separately to update text and indicator
+                 if (key === 'armed') {
+                     const indicator = telemetryElements[key].querySelector('#armed_indicator');
+                     const textNode = telemetryElements[key].firstChild; // Assumes text is the first child
+                     textNode.nodeValue = value ? 'Yes ' : 'No '; // Update Yes/No text
+                     if (indicator) {
+                         indicator.className = `status-indicator ${value ? 'status-armed' : 'status-disarmed'}`;
+                     }
+                 } else {
+                     telemetryElements[key].textContent = displayValue;
+                 }
+            }
+        }
+
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server');
+            wsStatusSpan.textContent = 'Connected';
+            wsIndicatorSpan.className = 'status-indicator status-connected';
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from WebSocket server');
+            wsStatusSpan.textContent = 'Disconnected';
+            wsIndicatorSpan.className = 'status-indicator status-disconnected';
+            // Optionally clear telemetry or show '--'
+            Object.keys(telemetryElements).forEach(key => {
+                 if (key !== 'armed') {
+                     telemetryElements[key].textContent = '--';
+                 } else {
+                      // Handle armed status on disconnect
+                     const indicator = telemetryElements[key].querySelector('#armed_indicator');
+                     const textNode = telemetryElements[key].firstChild;
+                     textNode.nodeValue = 'No ';
+                     if(indicator) indicator.className = 'status-indicator status-disarmed';
+                 }
+            });
+        });
+
+        socket.on('telemetry_update', (data) => {
+            // console.log('Received telemetry:', data); // For debugging
+            updateTelemetryElement('latitude', data.latitude);
+            updateTelemetryElement('longitude', data.longitude);
+            updateTelemetryElement('altitude', data.altitude, ' m');
+            updateTelemetryElement('groundspeed', data.groundspeed, ' m/s');
+            // updateTelemetryElement('airspeed', data.airspeed, ' m/s'); // Uncomment if needed
+            updateTelemetryElement('heading', data.heading, '°');
+            updateTelemetryElement('mode', data.mode);
+            updateTelemetryElement('armed', data.armed); // Special handling inside function
+            updateTelemetryElement('battery_voltage', data.battery_voltage, ' V');
+            updateTelemetryElement('battery_level', data.battery_level, '%');
+            updateTelemetryElement('gps_fix', data.gps_fix);
+            updateTelemetryElement('gps_satellites', data.gps_satellites);
+            updateTelemetryElement('system_status', data.system_status);
+            // Add more fields as needed
+        });
+
+        // --- Command Buttons ---
+        document.getElementById('armButton').addEventListener('click', () => {
+            sendCommand('/command/arm');
+        });
+
+        document.getElementById('missionButton').addEventListener('click', () => {
+            // Changed endpoint to /command/start_mission
+            sendCommand('/command/start_mission');
+        });
+
+         document.getElementById('rtlButton').addEventListener('click', () => {
+            sendCommand('/command/rtl');
+        });
+
+        function sendCommand(endpoint) {
+            commandStatusDiv.textContent = 'Sending command...';
+            commandStatusDiv.className = 'status-pending'; // Reset class
+
+            fetch(endpoint, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Command response:', data);
+                    commandStatusDiv.textContent = `Command ${data.status}: ${data.message}`;
+                    // Add success/error class based on response
+                    commandStatusDiv.className = data.status === 'success' ? 'status-success' : 'status-error';
+                 })
+                .catch(error => {
+                    console.error('Error sending command:', error);
+                    commandStatusDiv.textContent = 'Error sending command.';
+                    commandStatusDiv.className = 'status-error';
+                });
+        }
+
+    </script>
+</body>
+</html>
