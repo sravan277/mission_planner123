@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "author": "Arduino Timer System",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 10.2, "left": -29.4, "attrs": {} },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": -176, "left": 92, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-ds1307", "id": "rtc", "top": -111, "left": 403.3, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "up-btn",
+      "top": 250,
+      "left": 100,
+      "attrs": { "color": "green", "label": "UP" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "right-btn",
+      "top": 300,
+      "left": 150,
+      "attrs": { "color": "blue", "label": "RIGHT" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "down-btn",
+      "top": 350,
+      "left": 100,
+      "attrs": { "color": "red", "label": "DOWN" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "left-btn",
+      "top": 300,
+      "left": 50,
+      "attrs": { "color": "yellow", "label": "LEFT" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "select-btn",
+      "top": 300,
+      "left": 100,
+      "attrs": { "color": "white", "label": "SELECT" }
+    },
+    { "type": "wokwi-relay-module", "id": "relay", "top": 77, "left": 364.8, "attrs": {} },
+    { "type": "wokwi-led", "id": "led", "top": 207.6, "left": 416.6, "attrs": { "color": "red" } },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 263.15,
+      "left": 355.2,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "uno:5V", "lcd:VCC", "red", [ "v0" ] ],
+    [ "uno:GND", "lcd:GND", "black", [ "v0" ] ],
+    [ "uno:A4", "lcd:SDA", "blue", [ "v0" ] ],
+    [ "uno:A5", "lcd:SCL", "green", [ "v0" ] ],
+    [ "uno:5V", "rtc:5V", "red", [ "v10", "h100" ] ],
+    [ "uno:GND", "rtc:GND", "black", [ "v10", "h110" ] ],
+    [ "uno:A4", "rtc:SDA", "blue", [ "v20", "h120" ] ],
+    [ "uno:A5", "rtc:SCL", "green", [ "v20", "h130" ] ],
+    [ "uno:2", "up-btn:1.l", "yellow", [ "v0" ] ],
+    [ "up-btn:2.l", "uno:GND", "black", [ "h-10", "v-200" ] ],
+    [ "uno:3", "right-btn:1.l", "yellow", [ "v10", "h20" ] ],
+    [ "right-btn:2.l", "uno:GND", "black", [ "h-10", "v-240" ] ],
+    [ "uno:4", "down-btn:1.l", "yellow", [ "v20", "h-10" ] ],
+    [ "down-btn:2.l", "uno:GND", "black", [ "h-10", "v-280" ] ],
+    [ "uno:5", "left-btn:1.l", "yellow", [ "v30", "h-40" ] ],
+    [ "left-btn:2.l", "uno:GND", "black", [ "h-10", "v-270" ] ],
+    [ "uno:6", "select-btn:1.l", "yellow", [ "v40", "h-20" ] ],
+    [ "select-btn:2.l", "uno:GND", "black", [ "h-10", "v-290" ] ],
+    [ "uno:8", "relay:IN", "green", [ "v0", "h200" ] ],
+    [ "relay:VCC", "uno:5V", "red", [ "h-20", "v-80" ] ],
+    [ "relay:GND", "uno:GND", "black", [ "h-30", "v-60" ] ],
+    [ "uno:9", "r1:1", "green", [ "v50", "h200" ] ],
+    [ "r1:2", "led:A", "green", [ "v0" ] ],
+    [ "led:C", "uno:GND", "black", [ "h-50", "v-180" ] ]
+  ],
+  "dependencies": {}
+}
