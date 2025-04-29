@@ -1,0 +1,11 @@
+---
+language: en
+license: mit
+tags:
+  - image-classification
+  - mobilenetv2
+  - tensorflow
+  - mango-ripeness
+datasets:
+  - custom mango dataset
+---
