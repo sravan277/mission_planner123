@@ -1,0 +1,14 @@
+
+---
+language: en
+license: mit
+library_name: ultralytics
+tags:
+- yolov8
+- object-detection
+- computer-vision
+- mangoes
+- agriculture
+datasets:
+- custom mango dataset
+---
